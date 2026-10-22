@@ -1,0 +1,21 @@
+{
+  "name": "@9h/qa-runner",
+  "version": "0.1.0",
+  "description": "9H automated website QA: one scorecard, same thresholds, every project",
+  "type": "module",
+  "bin": {
+    "qa": "bin/qa.mjs"
+  },
+  "scripts": {
+    "qa": "node bin/qa.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "chrome-launcher": "^1.1.2",
+    "lighthouse": "^12.3.0",
+    "playwright": "^1.49.1"
+  }
+}

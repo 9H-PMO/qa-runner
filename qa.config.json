@@ -1,0 +1,28 @@
+{
+  "$comment": "9H QA standard. Every project is scored against these thresholds. Override per project with qa.project.json in the site's repo (only the keys you change).",
+  "crawl": { "maxPages": 20, "lighthousePages": 3, "timeoutMs": 45000 },
+  "viewports": {
+    "mobile": { "width": 390, "height": 844 },
+    "tablet": { "width": 820, "height": 1180 },
+    "desktop": { "width": 1440, "height": 900 }
+  },
+  "gates": {
+    "performance": { "lighthouseMobile": 85, "lcpMs": 2500, "cls": 0.1, "tbtMs": 300 },
+    "accessibility": { "maxCritical": 0, "maxSerious": 0, "lighthouse": 95 },
+    "seo": { "lighthouse": 95, "titleMin": 15, "titleMax": 65, "descMin": 70, "descMax": 160 },
+    "security": { "requiredHeaders": ["strict-transport-security", "x-content-type-options", "referrer-policy", "content-security-policy"], "certMinDays": 21 },
+    "ux": { "maxConsoleErrors": 0, "maxBrokenLinks": 0 },
+    "design": { "maxOverflowPages": 0 },
+    "privacy": { "maxTrackersBeforeConsent": 0 },
+    "content": { "maxPlaceholderHits": 0, "maxMissingAlt": 0 },
+    "analytics": { "requireAnalytics": true },
+    "reliability": { "maxTtfbMs": 800, "requireSpf": true, "requireDmarc": true },
+    "aeo": { "requireStructuredData": true }
+  },
+  "weights": {
+    "performance": 12, "accessibility": 12, "seo": 10, "security": 12, "ux": 10,
+    "design": 8, "privacy": 10, "content": 8, "analytics": 5, "reliability": 8, "aeo": 5
+  },
+  "placeholderPatterns": ["lorem ipsum", "dolor sit amet", "\\bTODO\\b", "\\bTBC\\b", "\\bTBD\\b", "placeholder", "example\\.com", "\\[insert", "xxx+"],
+  "trackerDomains": ["google-analytics.com", "googletagmanager.com", "doubleclick.net", "facebook.net", "facebook.com/tr", "connect.facebook", "hotjar.com", "clarity.ms", "linkedin.com/px", "snap.licdn.com", "tiktok.com", "analytics.tiktok", "hs-analytics.net", "hs-scripts.com", "segment.io", "mixpanel.com"]
+}

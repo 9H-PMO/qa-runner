@@ -1,0 +1,45 @@
+# Copy to .github/workflows/qa.yml in each website repo.
+# Runs the 9H QA standard on every successful Vercel deployment (preview and production)
+# and attaches the scorecard. Production deploys fail the check if any launch gate fails.
+#
+# Repo secrets needed:
+#   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
+#   QA_RUNNER_TOKEN   read access to the 9h qa-runner repo
+name: QA
+
+on:
+  deployment_status:
+
+jobs:
+  qa:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: 9hdigital/qa-runner
+          token: ${{ secrets.QA_RUNNER_TOKEN }}
+          path: .qa-runner
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # ubuntu-latest ships Google Chrome, which the runner uses for Playwright and Lighthouse.
+      - run: npm ci --prefix .qa-runner
+      - name: Run QA
+        env:
+          QA_VERCEL_BYPASS: ${{ secrets.QA_VERCEL_BYPASS }}
+          STAGE: ${{ github.event.deployment.environment == 'Production' && 'live' || 'staging' }}
+        run: |
+          node .qa-runner/bin/qa.mjs "${{ github.event.deployment_status.target_url }}" \
+            --project "${{ github.event.repository.name }}" --stage "$STAGE" --out qa-report \
+            $([ "$STAGE" = live ] && echo --strict) | tee qa-summary.txt
+      - name: Summary
+        if: always()
+        run: { echo '```'; cat qa-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-report
+          path: qa-report
