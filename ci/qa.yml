@@ -4,7 +4,7 @@
 #
 # Repo secrets needed:
 #   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
-#   QA_RUNNER_TOKEN   read access to the 9h qa-runner repo
+#   QA_RUNNER_TOKEN   fine-grained token with read access to 9H-PMO/qa-runner
 name: QA
 
 on:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: 9hdigital/qa-runner
+          repository: 9H-PMO/qa-runner
           token: ${{ secrets.QA_RUNNER_TOKEN }}
           path: .qa-runner
       - uses: actions/setup-node@v4
