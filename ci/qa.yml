@@ -7,7 +7,6 @@
 #   - weekly against the production URL
 #
 # Repo settings needed:
-#   secret   QA_RUNNER_TOKEN   fine-grained token with read access to 9H-PMO/qa-runner
 #   secret   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
 #   variable QA_URL            production URL, used by the weekly run
 #   variable QA_STAGE          "staging" until launch, then "live" (live fails the run on any gate)
@@ -41,7 +40,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: 9H-PMO/qa-runner
-          token: ${{ secrets.QA_RUNNER_TOKEN }}
+          # Pinned to a reviewed release: CI never runs unreviewed runner code with this repo's secrets.
+          ref: v1.0.0
           path: .qa-runner
       - uses: actions/setup-node@v4
         with:

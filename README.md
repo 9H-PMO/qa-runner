@@ -42,7 +42,7 @@ Every override should have a reason recorded in the project.
 ## Three ways it runs
 
 1. **On demand**: `/qa <url>` in Claude Code.
-2. **On every deploy**: copy `ci/qa.yml` into the site repo. Previews get a report; production fails on gate failures.
+2. **In CI**: copy `ci/qa.yml` into the site repo (manual, weekly, and on Vercel deploys when the Vercel project is linked to GitHub). It pins a release tag. To roll out a new standard, tag a release and bump `ref:` in each repo.
 3. **Monthly on live sites**: a scheduled run over every client domain, appending to `reports/history.jsonl`.
 
 ## Firewalls
