@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
-import { USER_AGENT, extraHeaders, httpFetch } from './http.mjs'
+import { USER_AGENT, bypassHeaders, hasBypass, isTarget, httpFetch } from './http.mjs'
 
 // Collects everything the checks need in one pass per page, so each check stays a pure function of this data.
 export { sitemapPages }
@@ -32,7 +32,15 @@ export async function crawl(baseUrl, config, log) {
 
 async function capturePage(browser, url, config, withScreenshots) {
   const vp = config.viewports.mobile
-  const context = await browser.newContext({ viewport: vp, deviceScaleFactor: 1, userAgent: USER_AGENT, extraHTTPHeaders: extraHeaders })
+  const context = await browser.newContext({ viewport: vp, deviceScaleFactor: 1, userAgent: USER_AGENT })
+  // Bypass header only on requests to the site under test (see http.mjs). maxRedirects: 0 hands each redirect back to
+  // the browser, so the next hop is routed (and judged) afresh instead of inheriting the header.
+  if (hasBypass) {
+    await context.route((u) => isTarget(u.href), async (route) => {
+      const response = await route.fetch({ headers: { ...route.request().headers(), ...bypassHeaders }, maxRedirects: 0 }).catch(() => null)
+      return response ? route.fulfill({ response }) : route.abort()
+    })
+  }
   const page = await context.newPage()
   const consoleErrors = []
   const requests = []

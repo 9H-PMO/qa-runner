@@ -33,6 +33,7 @@ export async function runChecks(pages, site, config) {
       if (r.cls > g.performance.cls) f.push({ severity: 'high', gate: true, title: `CLS ${r.cls.toFixed(3)} (> ${g.performance.cls})`, url: r.url, fix: 'Set width/height on images and embeds, reserve space for banners and fonts.' })
       if (r.tbt > g.performance.tbtMs) f.push({ severity: 'medium', title: `Total blocking time ${Math.round(r.tbt)}ms`, url: r.url, fix: 'Defer third-party scripts, split large bundles.' })
     }
+    if (lh.some((r) => r.viaBypass)) f.push({ severity: 'low', title: 'Lighthouse ran through the firewall bypass on some pages', detail: lh.filter((r) => r.viaBypass).map((r) => r.url).join('\n'), fix: 'Scores may be slightly pessimistic: the bypass header also goes to third-party assets.' })
     for (const r of site.lighthouse.filter((r) => r.error)) f.push({ severity: 'low', title: 'Lighthouse could not run on this page', url: r.url, detail: r.error })
     const oversized = ok.flatMap((p) => p.oversizedImages.map((i) => `${p.url}: ${i}`))
     if (oversized.length) f.push({ severity: 'medium', title: `${oversized.length} images served far larger than displayed`, detail: where(oversized), fix: 'Use next/image or responsive srcset.' })

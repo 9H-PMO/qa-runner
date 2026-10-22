@@ -2,7 +2,7 @@ import tls from 'node:tls'
 import dns from 'node:dns/promises'
 import lighthouse from 'lighthouse'
 import * as chromeLauncher from 'chrome-launcher'
-import { USER_AGENT, extraHeaders, httpFetch } from './http.mjs'
+import { USER_AGENT, bypassHeaders, hasBypass, httpFetch } from './http.mjs'
 
 const PLATFORM_HOSTS = /(\.vercel\.app|\.netlify\.app|\.replit\.app|\.repl\.co|\.pages\.dev|localhost|127\.0\.0\.1)$/
 
@@ -77,12 +77,19 @@ export async function runLighthouse(urls, log) {
   try {
     for (const url of urls) {
       log(`  lighthouse ${url}`)
-      const r = await lighthouse(url, { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'], formFactor: 'mobile', extraHeaders, emulatedUserAgent: USER_AGENT, screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }).catch((e) => ({ error: e.message }))
+      const flags = { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'], formFactor: 'mobile', emulatedUserAgent: USER_AGENT, screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
+      // Lighthouse can only add headers to every request (third parties included), so the bypass is a fallback for when the firewall blocks us.
+      let r = await lighthouse(url, flags).catch((e) => ({ error: e.message }))
+      let viaBypass = false
+      if (hasBypass && (!r?.lhr || r.lhr.runtimeError)) {
+        r = await lighthouse(url, { ...flags, extraHeaders: bypassHeaders }).catch((e) => ({ error: e.message }))
+        viaBypass = true
+      }
       if (!r?.lhr || r.lhr.runtimeError) { results.push({ url, error: r?.lhr?.runtimeError?.message ?? r?.error ?? 'failed' }); continue }
       const { categories: c, audits: a } = r.lhr
       const score = (k) => (c[k]?.score == null ? null : Math.round(c[k].score * 100))
       results.push({
-        url,
+        url, viaBypass,
         performance: score('performance'), accessibility: score('accessibility'), seo: score('seo'), bestPractices: score('best-practices'),
         lcp: a['largest-contentful-paint']?.numericValue, cls: a['cumulative-layout-shift']?.numericValue, tbt: a['total-blocking-time']?.numericValue,
         opportunities: Object.values(a).filter((x) => x.details?.type === 'opportunity' && (x.details.overallSavingsMs ?? 0) > 150).sort((x, y) => y.details.overallSavingsMs - x.details.overallSavingsMs).slice(0, 4).map((x) => `${x.title} (~${Math.round(x.details.overallSavingsMs)}ms)`),

@@ -6,6 +6,7 @@ import { crawl, sitemapPages } from '../src/crawl.mjs'
 import { siteFacts, runLighthouse } from '../src/site.mjs'
 import { runChecks } from '../src/checks.mjs'
 import { renderHtml } from '../src/report.mjs'
+import { setTarget } from '../src/http.mjs'
 
 const STANDARD_VERSION = '1.0'
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
@@ -32,6 +33,7 @@ const outDir = path.join(outBase, host.replace(/[:]/g, '_'), stamp)
 fs.mkdirSync(outDir, { recursive: true })
 
 if (flag('stage')) process.env.QA_STAGE = flag('stage')
+setTarget(url)
 log(`QA ${url}`)
 // Lighthouse first: crawling first can trip hosting firewalls and leave Lighthouse with a challenge page.
 log('1/4 Lighthouse')
