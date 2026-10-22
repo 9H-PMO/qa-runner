@@ -1,20 +1,41 @@
 # Copy to .github/workflows/qa.yml in each website repo.
-# Runs the 9H QA standard on every successful Vercel deployment (preview and production)
-# and attaches the scorecard. Production deploys fail the check if any launch gate fails.
+# Runs the 9H QA standard and attaches the scorecard as a build artifact.
 #
-# Repo secrets needed:
-#   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
-#   QA_RUNNER_TOKEN   fine-grained token with read access to 9H-PMO/qa-runner
+# Triggers:
+#   - every successful Vercel deployment (only when the Vercel project is connected to this GitHub repo)
+#   - manually from the Actions tab, with any URL
+#   - weekly against the production URL
+#
+# Repo settings needed:
+#   secret   QA_RUNNER_TOKEN   fine-grained token with read access to 9H-PMO/qa-runner
+#   secret   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
+#   variable QA_URL            production URL, used by the weekly run
+#   variable QA_STAGE          "staging" until launch, then "live" (live fails the run on any gate)
 name: QA
 
 on:
   deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL to check (defaults to the QA_URL variable)
+        required: false
+      stage:
+        description: staging or live
+        required: false
+        type: choice
+        options: ['', staging, live]
+  schedule:
+    - cron: '0 6 * * 1'
 
 jobs:
   qa:
-    if: github.event.deployment_status.state == 'success'
+    if: github.event_name != 'deployment_status' || github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      URL: ${{ github.event.deployment_status.target_url || inputs.url || vars.QA_URL }}
+      STAGE: ${{ inputs.stage || (github.event.deployment.environment == 'Preview' && 'staging') || vars.QA_STAGE || 'staging' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -30,14 +51,14 @@ jobs:
       - name: Run QA
         env:
           QA_VERCEL_BYPASS: ${{ secrets.QA_VERCEL_BYPASS }}
-          STAGE: ${{ github.event.deployment.environment == 'Production' && 'live' || 'staging' }}
         run: |
-          node .qa-runner/bin/qa.mjs "${{ github.event.deployment_status.target_url }}" \
-            --project "${{ github.event.repository.name }}" --stage "$STAGE" --out qa-report \
+          test -n "$URL" || { echo "No URL: pass one or set the QA_URL repo variable"; exit 1; }
+          node .qa-runner/bin/qa.mjs "$URL" --project "${{ github.event.repository.name }}" --stage "$STAGE" --out qa-report \
             $([ "$STAGE" = live ] && echo --strict) | tee qa-summary.txt
       - name: Summary
         if: always()
-        run: { echo '```'; cat qa-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          { echo '```'; cat qa-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
