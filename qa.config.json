@@ -96,7 +96,11 @@
     "placeholder",
     "example\\.com",
     "\\[insert",
-    "xxx+"
+    "xxx+",
+    "next build phase",
+    "under construction",
+    "content (?:to|will) follow",
+    "client pack"
   ],
   "trackerDomains": [
     "google-analytics.com",

@@ -218,11 +218,12 @@ export async function runChecks(pages, site, config) {
   {
     const f = []
     const html = ok.map((p) => p.html).join('\n')
-    const tools = Object.entries({ GA4: /G-[A-Z0-9]{6,}|gtag\(/, GTM: /GTM-[A-Z0-9]+/, 'Meta Pixel': /fbq\(/, Plausible: /plausible\.io/, 'Vercel Analytics': /_vercel\/insights|va\.vercel-scripts/, HubSpot: /hs-scripts\.com|js\.hs-analytics/ }).filter(([, r]) => r.test(html)).map(([n]) => n)
+    const tools = Object.entries({ GA4: /gtag\/js\?id=G-|gtag\(/, GTM: /GTM-[A-Z0-9]+/, 'Meta Pixel': /fbq\(/, Plausible: /plausible\.io/, 'Vercel Analytics': /_vercel\/insights|va\.vercel-scripts/, HubSpot: /hs-scripts\.com|js\.hs-analytics/ }).filter(([, r]) => r.test(html)).map(([n]) => n)
     if (!tools.length && g.analytics.requireAnalytics) f.push({ severity: site.live ? 'high' : 'low', gate: site.live, title: `No analytics detected${site.live ? '' : ' (install before launch)'}`, fix: 'Install GA4 via GTM (with Consent Mode v2) or a cookieless tool.' })
     const gtmIds = uniq(html.match(/GTM-[A-Z0-9]+/g) ?? [])
     if (gtmIds.length > 1) f.push({ severity: 'medium', title: 'Multiple GTM containers', detail: gtmIds.join(', ') })
-    const anyTag = /G-[A-Z0-9]{6,}|GTM-|plausible|_vercel\/insights|va\.vercel-scripts|fbq\(|hs-scripts/
+    // Script-loader signatures only: bare IDs like G-XXXXXX also occur in filenames and copy.
+    const anyTag = /gtag\/js\?id=G-|gtag\(|googletagmanager\.com\/gtm\.js|plausible|_vercel\/insights|va\.vercel-scripts|fbq\(|hs-scripts/
     const missing = tools.length ? ok.filter((p) => !anyTag.test(p.html)) : []
     if (missing.length) f.push({ severity: 'medium', title: `Analytics missing on ${missing.length} page(s)`, detail: where(missing) })
     cat('analytics', f, { tools: tools.join(', ') || 'none' })
