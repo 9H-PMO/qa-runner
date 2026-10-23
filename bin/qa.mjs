@@ -7,6 +7,7 @@ import { siteFacts, runLighthouse } from '../src/site.mjs'
 import { runChecks } from '../src/checks.mjs'
 import { renderHtml } from '../src/report.mjs'
 import { setTarget } from '../src/http.mjs'
+import { runJourneys, journeysCategory } from '../src/journeys.mjs'
 
 const STANDARD_VERSION = '1.0'
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
@@ -14,7 +15,7 @@ const args = process.argv.slice(2)
 const flag = (name, dflt) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : dflt }
 const url = args.find((a) => /^https?:\/\//.test(a))
 if (!url) {
-  console.error('Usage: qa <url> [--project name] [--pages 20] [--out dir] [--stage staging|live] [--config qa.project.json] [--strict] [--quiet]')
+  console.error('Usage: qa <url> [--project name] [--pages 20] [--out dir] [--stage staging|live] [--config qa.project.json] [--strict] [--quiet] [--stories dir] [--journeys-only]')
   process.exit(2)
 }
 
@@ -35,22 +36,32 @@ fs.mkdirSync(outDir, { recursive: true })
 if (flag('stage')) process.env.QA_STAGE = flag('stage')
 setTarget(url)
 log(`QA ${url}`)
-// Lighthouse first: crawling first can trip hosting firewalls and leave Lighthouse with a challenge page.
-log('1/4 Lighthouse')
-const lhUrls = [...new Set([new URL(url).href, ...(await sitemapPages(new URL(url), 10))])].slice(0, config.crawl.lighthousePages)
-const lighthouseResults = await runLighthouse(lhUrls, log)
-log('2/4 crawling pages')
-const pages = await crawl(url, config, log)
-log('3/4 site checks')
-const site = await siteFacts(url, pages, config, log, lighthouseResults)
-log('4/4 scoring')
-const categories = await runChecks(pages, site, config)
+// --journeys-only: just the user stories (fast loop while writing qa.journeys.mjs).
+const journeysOnly = args.includes('--journeys-only')
+const storiesDir = path.resolve(flag('stories', '.'))
+let pages = [], site = { lighthouse: [], live: false }, categories = {}
+if (!journeysOnly) {
+  // Lighthouse first: crawling first can trip hosting firewalls and leave Lighthouse with a challenge page.
+  log('1/5 Lighthouse')
+  const lhUrls = [...new Set([new URL(url).href, ...(await sitemapPages(new URL(url), 10))])].slice(0, config.crawl.lighthousePages)
+  const lighthouseResults = await runLighthouse(lhUrls, log)
+  log('2/5 crawling pages')
+  pages = await crawl(url, config, log)
+  log('3/5 site checks')
+  site = await siteFacts(url, pages, config, log, lighthouseResults)
+  log('4/5 scoring')
+  categories = await runChecks(pages, site, config)
+}
+log('5/5 user journeys')
+const journeyRun = await runJourneys(url, config, storiesDir, log)
+if (journeyRun) categories.journeys = journeysCategory(journeyRun)
+else log('  no qa.stories.yml found: skipped')
 
 const totalWeight = Object.keys(categories).reduce((s, k) => s + (config.weights[k] ?? 0), 0)
 const overall = Math.round(Object.values(categories).reduce((s, c) => s + (c.score ?? 0) * (config.weights[c.key] ?? 0), 0) / totalWeight)
 const failedGates = Object.values(categories).filter((c) => c.status === 'fail').map((c) => c.label)
 // If the host's firewall blocked us, the scores describe a challenge page, not the site.
-const incomplete = pages[0]?.challenged || pages.filter((p) => p.challenged).length > pages.length * 0.3 || site.lighthouse.every((r) => r.error)
+const incomplete = !journeysOnly && (pages[0]?.challenged || pages.filter((p) => p.challenged).length > pages.length * 0.3 || site.lighthouse.every((r) => r.error))
 
 // Screenshots go to files too, so the /qa skill can review them visually.
 const screenshots = pages.filter((p) => Object.keys(p.screenshots).length).map((p, i) => {

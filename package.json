@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.49.1",
     "chrome-launcher": "^1.1.2",
     "lighthouse": "^12.3.0",
-    "playwright": "^1.49.1"
+    "playwright": "^1.49.1",
+    "yaml": "^2.6.1"
   }
 }

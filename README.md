@@ -28,6 +28,17 @@ Things tools can't judge (visual design, copy and Figma fidelity) are covered by
 **Share images:** Slack and WhatsApp show only a square cut from the middle of the 1200×630 image, so put the logo and
 headline inside the central 630×630 and keep photos and decoration at the sides. Check the square crop by eye before launch.
 
+## User journeys
+
+Each site repo can hold `qa.stories.yml` (plain-language user stories a PM reviews) and `qa.journeys.mjs`
+(one Playwright function per story id). Every run plays each story at mobile and desktop and adds a
+**User journeys** category: critical/high stories are gates, failures include the step and a screenshot.
+Stories without a function show as "not automated yet". `--journeys-only` runs just these (fast while writing them).
+
+Forms: stories with `submits: true` really submit. The runner sends header `x-qa-test: $QA_FORM_SECRET` to the
+site under test only; the site must store those entries without sending emails (see BMIT's
+`src/forms/endpoints/submit.ts`). Without `QA_FORM_SECRET`, these stories are skipped rather than email anyone.
+
 ## Stages
 
 `--stage staging` (the default for `*.vercel.app` and localhost) turns noindex, robots blocking and missing analytics into reminders. `--stage live` (the default for own domains) makes them gates.

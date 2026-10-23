@@ -7,6 +7,7 @@
 #   - weekly against the production URL
 #
 # Repo settings needed:
+#   secret   QA_FORM_SECRET    same value as the site's QA_FORM_SECRET env var (form journeys; skipped without it)
 #   secret   QA_VERCEL_BYPASS  Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation
 #   variable QA_URL            production URL, used by the weekly run
 #   variable QA_STAGE          "staging" until launch, then "live" (live fails the run on any gate)
@@ -41,7 +42,7 @@ jobs:
         with:
           repository: 9H-PMO/qa-runner
           # Pinned to a reviewed release: CI never runs unreviewed runner code with this repo's secrets.
-          ref: v1.0.1
+          ref: v1.1.0
           path: .qa-runner
       - uses: actions/setup-node@v4
         with:
@@ -51,6 +52,7 @@ jobs:
       - name: Run QA
         env:
           QA_VERCEL_BYPASS: ${{ secrets.QA_VERCEL_BYPASS }}
+          QA_FORM_SECRET: ${{ secrets.QA_FORM_SECRET }}
         run: |
           test -n "$URL" || { echo "No URL: pass one or set the QA_URL repo variable"; exit 1; }
           node .qa-runner/bin/qa.mjs "$URL" --project "${{ github.event.repository.name }}" --stage "$STAGE" --out qa-report \
