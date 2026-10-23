@@ -38,7 +38,8 @@ async function capturePage(browser, url, config, withScreenshots) {
   if (hasBypass) {
     await context.route((u) => isTarget(u.href), async (route) => {
       const response = await route.fetch({ headers: { ...route.request().headers(), ...bypassHeaders }, maxRedirects: 0 }).catch(() => null)
-      return response ? route.fulfill({ response }) : route.abort()
+      // The context may close while this is in flight (journey/page done): ignore, or Node exits on the rejection.
+      return (response ? route.fulfill({ response }) : route.abort()).catch(() => {})
     })
   }
   const page = await context.newPage()

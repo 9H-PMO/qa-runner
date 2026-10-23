@@ -43,7 +43,8 @@ export async function runJourneys(baseUrl, config, dir, log) {
           const headers = { ...req.headers(), ...bypassHeaders }
           if (formSecret && req.method() === 'POST' && /\/api\/forms\/[^/]+\/submit/.test(req.url())) headers['x-qa-test'] = formSecret
           const response = await route.fetch({ headers, maxRedirects: 0 }).catch(() => null)
-          return response ? route.fulfill({ response }) : route.abort()
+          // The context may close while this is in flight (journey done): ignore, or Node exits on the rejection.
+          return (response ? route.fulfill({ response }) : route.abort()).catch(() => {})
         })
       }
       const page = await context.newPage()

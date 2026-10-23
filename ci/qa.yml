@@ -42,7 +42,7 @@ jobs:
         with:
           repository: 9H-PMO/qa-runner
           # Pinned to a reviewed release: CI never runs unreviewed runner code with this repo's secrets.
-          ref: v1.1.0
+          ref: v1.1.1
           path: .qa-runner
       - uses: actions/setup-node@v4
         with:
@@ -50,6 +50,8 @@ jobs:
       # ubuntu-latest ships Google Chrome, which the runner uses for Playwright and Lighthouse.
       - run: npm ci --prefix .qa-runner
       - name: Run QA
+        # shell: bash adds -o pipefail, so a runner crash fails the job instead of hiding behind `| tee`
+        shell: bash
         env:
           QA_VERCEL_BYPASS: ${{ secrets.QA_VERCEL_BYPASS }}
           QA_FORM_SECRET: ${{ secrets.QA_FORM_SECRET }}
