@@ -1,4 +1,4 @@
-import { httpFetch, isChallenge } from './http.mjs'
+import { httpFetch, isChallenge, isTarget } from './http.mjs'
 
 // Each check turns crawl + site facts into findings. A finding with gate: true fails the category.
 // Severity drives the score: critical -40, high -20, medium -8, low -3 (floor 0).
@@ -276,6 +276,9 @@ async function checkLinks(links, pages) {
       if (res instanceof Response && [403, 405].includes(res.status) && !isChallenge(res)) res = await httpFetch(url, { redirect: 'follow' }).catch((e) => e)
       if (!(res instanceof Response)) broken.push({ url, status: res.name ?? 'error' })
       else if (isChallenge(res)) unverified.push(url)
+      // Another site answering 403 is almost always bot protection (allaboutcookies.org, LinkedIn…): real visitors
+      // get the page, so it's unverified, not broken. A 403 from the site under test is still a broken link.
+      else if (res.status === 403 && !isTarget(url)) unverified.push(url)
       else if (res.status >= 400) broken.push({ url, status: res.status })
     }
   }))
