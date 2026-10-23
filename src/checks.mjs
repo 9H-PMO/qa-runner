@@ -10,6 +10,48 @@ const LABELS = {
   reliability: 'Reliability & ops', aeo: 'AEO (AI answers)',
 }
 
+// Link previews (Slack, WhatsApp, LinkedIn): the og:image must load, be about 1200×630, and not be a starter-kit default.
+// Slack and WhatsApp show only a square from the middle, so the logo and headline belong there (checked by eye, see README).
+const TEMPLATE_OG = /website-template-OG|vercel\.svg|next\.svg|placeholder|og-default/i
+
+function imageSize(buf) {
+  const b = new Uint8Array(buf)
+  if (b[0] === 0x89 && b[1] === 0x50) return { w: (b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], h: (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23] }
+  if (b[0] === 0xff && b[1] === 0xd8) {
+    for (let i = 2; i < b.length - 9; ) {
+      if (b[i] !== 0xff) { i++; continue }
+      const m = b[i + 1]
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8] }
+      i += 2 + ((b[i + 2] << 8) | b[i + 3])
+    }
+  }
+  if (b[8] === 0x57 && b[9] === 0x45 && b[12] === 0x56 && b[13] === 0x50 && b[15] === 0x38) {
+    if (b[15] === 0x38 && b[14] === 0x58) return { w: 1 + (b[24] | (b[25] << 8) | (b[26] << 16)), h: 1 + (b[27] | (b[28] << 8) | (b[29] << 16)) }
+    if (b[14] === 0x20) return { w: (b[26] | (b[27] << 8)) & 0x3fff, h: (b[28] | (b[29] << 8)) & 0x3fff }
+    if (b[14] === 0x4c) return { w: 1 + (((b[22] & 0x3f) << 8) | b[21]), h: 1 + (((b[24] & 0x0f) << 10) | (b[23] << 2) | ((b[22] & 0xc0) >> 6)) }
+  }
+  return null
+}
+
+export async function checkShareImages(pages) {
+  const f = []
+  const where = (list) => list.slice(0, 5).map((p) => p.url).join('\n') + (list.length > 5 ? `\n…and ${list.length - 5} more` : '')
+  const byImage = groupBy(pages.filter((p) => p.ogImage), (p) => new URL(p.ogImage, p.url).href)
+  for (const [img, ps] of Object.entries(byImage).slice(0, 10)) {
+    const res = await httpFetch(img).catch((e) => e)
+    if (!(res instanceof Response) || isChallenge(res)) continue
+    if (res.status !== 200 || !/^image\//.test(res.headers.get('content-type') ?? '')) {
+      f.push({ severity: 'medium', title: `Share image broken (${res.status}) on ${ps.length} page(s): link previews show no picture`, detail: `${img}\n` + where(ps) })
+      continue
+    }
+    if (TEMPLATE_OG.test(img)) f.push({ severity: 'medium', title: `Share image is a starter-template default on ${ps.length} page(s)`, detail: img })
+    const size = imageSize(await res.arrayBuffer())
+    if (size && (size.w < 1200 || Math.abs(size.w / size.h - 1.905) > 0.12))
+      f.push({ severity: 'low', title: `Share image is ${size.w}×${size.h}; use 1200×630 with the logo and headline in the middle square`, detail: img })
+  }
+  return f
+}
+
 export async function runChecks(pages, site, config) {
   const ok = pages.filter((p) => p.status === 200 && !p.error)
   const g = config.gates
@@ -75,6 +117,7 @@ export async function runChecks(pages, site, config) {
     if (noLang.length) f.push({ severity: 'medium', title: 'Missing <html lang>', detail: where(noLang) })
     const noOg = ok.filter((p) => !p.ogImage || !p.ogTitle)
     if (noOg.length) f.push({ severity: 'low', title: `Missing Open Graph title/image on ${noOg.length} page(s)`, detail: where(noOg) })
+    f.push(...(await checkShareImages(ok)))
     const noindex = ok.filter((p) => /noindex/i.test(p.robotsMeta ?? '') || /noindex/i.test(p.headers['x-robots-tag'] ?? ''))
     if (noindex.length) f.push({ severity: site.live ? 'critical' : 'low', gate: site.live, title: `noindex on ${noindex.length} page(s)${site.live ? '' : ' (staging: remove at launch)'}`, detail: where(noindex) })
     if (!site.robotsTxt) f.push({ severity: 'medium', title: 'No robots.txt' })

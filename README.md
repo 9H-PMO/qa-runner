@@ -13,7 +13,7 @@ node bin/qa.mjs https://example.com --project "Client"
 |---|---|---|
 | Performance | Lighthouse mobile, LCP, CLS, TBT, oversized images | score ≥ 85, LCP ≤ 2.5s, CLS ≤ 0.1 |
 | Accessibility | axe-core WCAG 2.2 AA on every page, Lighthouse a11y, tap targets | 0 critical/serious, Lighthouse ≥ 95 |
-| SEO | titles, descriptions, H1, canonical, lang, OG, duplicates, robots.txt, sitemap, noindex | description present, sitemap, no noindex when live |
+| SEO | titles, descriptions, H1, canonical, lang, OG, share image (loads, 1200×630, not a template default), duplicates, robots.txt, sitemap, noindex | description present, sitemap, no noindex when live |
 | Security | HSTS, CSP, XCTO, Referrer-Policy, clickjacking, HTTPS redirect, TLS expiry, mixed content, exposed files (.env, .git), cookie flags | required headers, no exposed files, cert > 21 days |
 | UX & functional | page errors, broken links, console errors, failed assets, real 404s, viewport meta | no 4xx/5xx pages, 0 broken links, 0 console errors |
 | Design & layout | horizontal scroll at mobile/tablet/desktop, tiny text, broken images, screenshots | no overflow, no broken images |
@@ -24,6 +24,9 @@ node bin/qa.mjs https://example.com --project "Client"
 | AEO | JSON-LD, Organization schema, AI-crawler blocking, llms.txt, server-rendered content | structured data present, ≥ 50% of text in the server HTML |
 
 Things tools can't judge (visual design, copy and Figma fidelity) are covered by the `/qa` Claude skill. It runs this tool, then reviews the screenshots.
+
+**Share images:** Slack and WhatsApp show only a square cut from the middle of the 1200×630 image, so put the logo and
+headline inside the central 630×630 and keep photos and decoration at the sides. Check the square crop by eye before launch.
 
 ## Stages
 
