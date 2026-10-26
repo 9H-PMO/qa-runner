@@ -70,7 +70,7 @@ export async function runChecks(pages, site, config) {
   {
     const f = []
     for (const r of lh) {
-      if (r.performance < g.performance.lighthouseMobile) f.push({ severity: r.performance < 50 ? 'critical' : 'high', gate: true, title: `Lighthouse mobile performance ${r.performance} (< ${g.performance.lighthouseMobile})`, url: r.url, fix: r.opportunities.join('; ') || 'See Lighthouse report' })
+      if (r.performance < g.performance.lighthouseMobile) f.push({ severity: r.performance < 50 ? 'critical' : 'high', gate: true, title: `Lighthouse mobile performance ${r.performance} (< ${g.performance.lighthouseMobile})${r.runs > 1 ? `, median of ${r.runs} runs (${r.performanceRange.join('–')})` : ''}`, url: r.url, fix: r.opportunities.join('; ') || 'See Lighthouse report' })
       if (r.lcp > g.performance.lcpMs) f.push({ severity: 'high', gate: true, title: `LCP ${(r.lcp / 1000).toFixed(1)}s (> ${g.performance.lcpMs / 1000}s)`, url: r.url, fix: 'Preload the hero image, serve AVIF/WebP at the right size, avoid client-only rendering above the fold.' })
       if (r.cls > g.performance.cls) f.push({ severity: 'high', gate: true, title: `CLS ${r.cls.toFixed(3)} (> ${g.performance.cls})`, url: r.url, fix: 'Set width/height on images and embeds, reserve space for banners and fonts.' })
       if (r.tbt > g.performance.tbtMs) f.push({ severity: 'medium', title: `Total blocking time ${Math.round(r.tbt)}ms`, url: r.url, fix: 'Defer third-party scripts, split large bundles.' })
@@ -79,7 +79,7 @@ export async function runChecks(pages, site, config) {
     for (const r of site.lighthouse.filter((r) => r.error)) f.push({ severity: 'low', title: 'Lighthouse could not run on this page', url: r.url, detail: r.error })
     const oversized = ok.flatMap((p) => p.oversizedImages.map((i) => `${p.url}: ${i}`))
     if (oversized.length) f.push({ severity: 'medium', title: `${oversized.length} images served far larger than displayed`, detail: where(oversized), fix: 'Use next/image or responsive srcset.' })
-    cat('performance', f, { lighthouseMobile: avg('performance'), bestPractices: avg('bestPractices') }, avg('performance') ?? undefined)
+    cat('performance', f, { lighthouseMobile: avg('performance'), bestPractices: avg('bestPractices'), lighthouseRunsPerPage: lh[0]?.runs ?? 1 }, avg('performance') ?? undefined)
   }
 
   // Accessibility

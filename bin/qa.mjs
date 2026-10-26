@@ -44,7 +44,7 @@ if (!journeysOnly) {
   // Lighthouse first: crawling first can trip hosting firewalls and leave Lighthouse with a challenge page.
   log('1/5 Lighthouse')
   const lhUrls = [...new Set([new URL(url).href, ...(await sitemapPages(new URL(url), 10))])].slice(0, config.crawl.lighthousePages)
-  const lighthouseResults = await runLighthouse(lhUrls, log)
+  const lighthouseResults = await runLighthouse(lhUrls, log, config.crawl.lighthouseRuns ?? 3)
   log('2/5 crawling pages')
   pages = await crawl(url, config, log)
   log('3/5 site checks')

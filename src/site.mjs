@@ -71,32 +71,50 @@ async function certDays(host) {
   })
 }
 
-export async function runLighthouse(urls, log) {
+/**
+ * Lighthouse mobile for each URL, `runs` times, keeping the median run (by performance score) so its LCP, TBT and CLS
+ * come from one real run. A single run swings by ~15 points on CI machines, which made the performance gate a coin toss.
+ */
+export async function runLighthouse(urls, log, runs = 3) {
   const chrome = await chromeLauncher.launch({ chromeFlags: ['--headless=new', '--no-sandbox'] })
   const results = []
   try {
     for (const url of urls) {
-      log(`  lighthouse ${url}`)
-      const flags = { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'], formFactor: 'mobile', emulatedUserAgent: USER_AGENT, screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
-      // Lighthouse can only add headers to every request (third parties included), so the bypass is a fallback for when the firewall blocks us.
-      let r = await lighthouse(url, flags).catch((e) => ({ error: e.message }))
-      let viaBypass = false
-      if (hasBypass && (!r?.lhr || r.lhr.runtimeError)) {
-        r = await lighthouse(url, { ...flags, extraHeaders: bypassHeaders }).catch((e) => ({ error: e.message }))
-        viaBypass = true
+      const done = []
+      let lastError = 'failed'
+      for (let i = 0; i < runs; i++) {
+        log(`  lighthouse ${url}${runs > 1 ? ` (${i + 1}/${runs})` : ''}`)
+        const r = await lighthouseOnce(url, chrome.port)
+        if (r.error) lastError = r.error
+        else done.push(r)
       }
-      if (!r?.lhr || r.lhr.runtimeError) { results.push({ url, error: r?.lhr?.runtimeError?.message ?? r?.error ?? 'failed' }); continue }
-      const { categories: c, audits: a } = r.lhr
-      const score = (k) => (c[k]?.score == null ? null : Math.round(c[k].score * 100))
-      results.push({
-        url, viaBypass,
-        performance: score('performance'), accessibility: score('accessibility'), seo: score('seo'), bestPractices: score('best-practices'),
-        lcp: a['largest-contentful-paint']?.numericValue, cls: a['cumulative-layout-shift']?.numericValue, tbt: a['total-blocking-time']?.numericValue,
-        opportunities: Object.values(a).filter((x) => x.details?.type === 'opportunity' && (x.details.overallSavingsMs ?? 0) > 150).sort((x, y) => y.details.overallSavingsMs - x.details.overallSavingsMs).slice(0, 4).map((x) => `${x.title} (~${Math.round(x.details.overallSavingsMs)}ms)`),
-      })
+      if (!done.length) { results.push({ url, error: lastError }); continue }
+      const sorted = [...done].sort((a, b) => (a.performance ?? 0) - (b.performance ?? 0))
+      const median = sorted[Math.floor((sorted.length - 1) / 2)]
+      results.push({ ...median, runs: done.length, performanceRange: [sorted[0].performance, sorted.at(-1).performance] })
     }
   } finally {
     await chrome.kill()
   }
   return results
+}
+
+async function lighthouseOnce(url, port) {
+  const flags = { port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'], formFactor: 'mobile', emulatedUserAgent: USER_AGENT, screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
+  // Lighthouse can only add headers to every request (third parties included), so the bypass is a fallback for when the firewall blocks us.
+  let r = await lighthouse(url, flags).catch((e) => ({ error: e.message }))
+  let viaBypass = false
+  if (hasBypass && (!r?.lhr || r.lhr.runtimeError)) {
+    r = await lighthouse(url, { ...flags, extraHeaders: bypassHeaders }).catch((e) => ({ error: e.message }))
+    viaBypass = true
+  }
+  if (!r?.lhr || r.lhr.runtimeError) return { url, error: r?.lhr?.runtimeError?.message ?? r?.error ?? 'failed' }
+  const { categories: c, audits: a } = r.lhr
+  const score = (k) => (c[k]?.score == null ? null : Math.round(c[k].score * 100))
+  return {
+    url, viaBypass,
+    performance: score('performance'), accessibility: score('accessibility'), seo: score('seo'), bestPractices: score('best-practices'),
+    lcp: a['largest-contentful-paint']?.numericValue, cls: a['cumulative-layout-shift']?.numericValue, tbt: a['total-blocking-time']?.numericValue,
+    opportunities: Object.values(a).filter((x) => x.details?.type === 'opportunity' && (x.details.overallSavingsMs ?? 0) > 150).sort((x, y) => y.details.overallSavingsMs - x.details.overallSavingsMs).slice(0, 4).map((x) => `${x.title} (~${Math.round(x.details.overallSavingsMs)}ms)`),
+  }
 }

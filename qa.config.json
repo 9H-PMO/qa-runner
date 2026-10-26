@@ -3,6 +3,7 @@
   "crawl": {
     "maxPages": 20,
     "lighthousePages": 3,
+    "lighthouseRuns": 3,
     "timeoutMs": 45000
   },
   "viewports": {

@@ -11,7 +11,7 @@ node bin/qa.mjs https://example.com --project "Client"
 
 | Category | Automated checks | Launch gates (fail the run) |
 |---|---|---|
-| Performance | Lighthouse mobile, LCP, CLS, TBT, oversized images | score ≥ 85, LCP ≤ 2.5s, CLS ≤ 0.1 |
+| Performance | Lighthouse mobile (median of 3 runs per page), LCP, CLS, TBT, oversized images | score ≥ 85, LCP ≤ 2.5s, CLS ≤ 0.1 |
 | Accessibility | axe-core WCAG 2.2 AA on every page, Lighthouse a11y, tap targets | 0 critical/serious, Lighthouse ≥ 95 |
 | SEO | titles, descriptions, H1, canonical, lang, OG, share image (loads, 1200×630, not a template default), duplicates, robots.txt, sitemap, noindex | description present, sitemap, no noindex when live |
 | Security | HSTS, CSP, XCTO, Referrer-Policy, clickjacking, HTTPS redirect, TLS expiry, mixed content, exposed files (.env, .git), cookie flags | required headers, no exposed files, cert > 21 days |
