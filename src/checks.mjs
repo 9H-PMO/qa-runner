@@ -148,7 +148,8 @@ export async function runChecks(pages, site, config) {
     const badCookies = uniq(ok.flatMap((p) => p.cookies.filter((c) => !site.isLocal && !c.secure).map((c) => c.name)))
     if (badCookies.length) f.push({ severity: 'medium', title: 'Cookies without Secure flag', detail: badCookies.join(', ') })
     const bp = avg('bestPractices')
-    if (bp != null && bp < 90) f.push({ severity: 'low', title: `Lighthouse best practices ${bp}` })
+    const bpMin = g.security.bestPractices ?? 95
+    if (bp != null && bp < bpMin) f.push({ severity: 'high', gate: true, title: `Lighthouse best practices ${bp} (< ${bpMin})`, fix: 'See the Lighthouse report (Best practices)' })
     cat('security', f, { certDaysLeft: site.certDaysLeft ?? 'n/a', headersPresent: g.security.requiredHeaders.filter((n) => h[n]).length + '/' + g.security.requiredHeaders.length })
   }
 

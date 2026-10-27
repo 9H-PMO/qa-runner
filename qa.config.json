@@ -22,7 +22,7 @@
   },
   "gates": {
     "performance": {
-      "lighthouseMobile": 85,
+      "lighthouseMobile": 95,
       "lcpMs": 2500,
       "cls": 0.1,
       "tbtMs": 300
@@ -46,7 +46,8 @@
         "referrer-policy",
         "content-security-policy"
       ],
-      "certMinDays": 21
+      "certMinDays": 21,
+      "bestPractices": 95
     },
     "ux": {
       "maxConsoleErrors": 0,
